@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fiszki ES">
+<meta name="theme-color" content="#2f6fed">
+<title>Fiszki — hiszpański</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --text:#1c1d21; --muted:#6b7280;
+    --line:#e5e7eb; --accent:#2f6fed; --accent-text:#ffffff;
+    --good:#15a35b; --good-bg:#e7f6ee; --bad:#e23b3b; --bad-bg:#fde9e9;
+    --chip:#eef0f3;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1115; --card:#181b21; --text:#f0f1f4; --muted:#9aa1ad;
+      --line:#2a2e37; --accent:#5b8cff; --accent-text:#0f1115;
+      --good:#3ad17f; --good-bg:#13301f; --bad:#ff6b6b; --bad-bg:#33191a;
+      --chip:#232730;
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  header{
+    position:sticky; top:0; z-index:5; background:var(--bg);
+    padding:14px 16px 8px; border-bottom:1px solid var(--line);
+  }
+  h1{font-size:18px;margin:0 0 10px;font-weight:700;text-align:center;letter-spacing:.2px;}
+  .tabs{display:flex;gap:6px;justify-content:center;}
+  .tabs button{
+    flex:1;max-width:160px;border:none;background:transparent;color:var(--muted);
+    font-size:14px;font-weight:600;padding:8px 6px;border-radius:9px;cursor:pointer;
+  }
+  .tabs button.active{background:var(--chip);color:var(--text);}
+  main{max-width:560px;margin:0 auto;padding:18px 16px 60px;}
+  section.hidden,.hidden{display:none !important;}
+
+  .seg{display:flex;background:var(--chip);border-radius:11px;padding:4px;margin-bottom:22px;}
+  .seg button{flex:1;border:none;background:transparent;color:var(--muted);font-size:14px;
+    font-weight:600;padding:9px;border-radius:8px;cursor:pointer;}
+  .seg button.active{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:20px;
+    padding:42px 22px;text-align:center;margin-bottom:18px;min-height:150px;
+    display:flex;flex-direction:column;justify-content:center;gap:8px;
+  }
+  .prompt-lang{font-size:12px;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;}
+  .prompt{font-size:34px;font-weight:800;line-height:1.15;word-break:break-word;}
+  .cat{font-size:12px;color:var(--muted);}
+
+  input[type=text]{
+    width:100%;font-size:18px;padding:14px 14px;border:1px solid var(--line);
+    border-radius:12px;background:var(--card);color:var(--text);outline:none;
+  }
+  input[type=text]:focus{border-color:var(--accent);}
+  .row{display:flex;gap:10px;margin-top:12px;}
+  button.primary{
+    width:100%;border:none;background:var(--accent);color:var(--accent-text);
+    font-size:17px;font-weight:700;padding:14px;border-radius:12px;cursor:pointer;margin-top:12px;
+  }
+  button.primary:disabled{opacity:.45;cursor:default;}
+  button.ghost{
+    border:1px solid var(--line);background:var(--card);color:var(--text);
+    font-size:15px;font-weight:600;padding:12px;border-radius:11px;cursor:pointer;width:100%;
+  }
+
+  .feedback{border-radius:16px;padding:20px;text-align:center;margin-bottom:6px;}
+  .feedback.good{background:var(--good-bg);}
+  .feedback.bad{background:var(--bad-bg);}
+  .fb-icon{font-size:30px;line-height:1;}
+  .fb-answer{font-size:26px;font-weight:800;margin-top:6px;}
+  .feedback.good .fb-answer,.feedback.good .fb-icon{color:var(--good);}
+  .feedback.bad .fb-answer,.feedback.bad .fb-icon{color:var(--bad);}
+  .fb-yours{font-size:14px;color:var(--muted);margin-top:8px;}
+  .fb-note{font-size:13px;color:var(--muted);margin-top:8px;font-style:italic;}
+  .dots{display:flex;gap:6px;justify-content:center;margin-top:12px;}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--line);}
+  .dot.on{background:var(--good);}
+
+  .empty{text-align:center;color:var(--muted);padding:40px 10px;font-size:15px;}
+
+  .list-tools{display:flex;gap:10px;margin-bottom:14px;}
+  .list-tools input{flex:1;margin:0;}
+  .add-btn{border:none;background:var(--accent);color:var(--accent-text);font-size:22px;
+    font-weight:700;width:48px;border-radius:12px;cursor:pointer;}
+  ul.words{list-style:none;margin:0;padding:0;}
+  ul.words li{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer;
+  }
+  .w-main{flex:1;min-width:0;}
+  .w-es{font-weight:600;}
+  .w-en{font-size:14px;color:var(--muted);}
+  .w-chip{font-size:11px;color:var(--muted);background:var(--chip);padding:3px 8px;border-radius:20px;white-space:nowrap;}
+  .w-mini-dots{display:flex;gap:3px;}
+  .w-mini-dots .dot{width:6px;height:6px;}
+
+  .set-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 16px;margin-bottom:16px;}
+  .set-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);}
+  .set-row:last-child{border-bottom:none;}
+  .set-row .k{color:var(--muted);font-size:14px;}
+  .set-row .v{font-weight:700;}
+  .set-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:4px 2px 8px;}
+  .set-actions{display:flex;flex-direction:column;gap:10px;}
+  .danger{color:var(--bad);border-color:var(--bad);}
+  .hint{font-size:13px;color:var(--muted);margin:10px 2px 0;line-height:1.45;}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20;}
+  .modal-inner{background:var(--card);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom));}
+  @media(min-width:600px){.modal{align-items:center;}.modal-inner{border-radius:18px;}}
+  .modal h2{font-size:17px;margin:0 0 14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600;}
+  .field input{margin:0;}
+  .modal-btns{display:flex;gap:10px;margin-top:8px;}
+  .modal-btns button{flex:1;}
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fiszki — hiszpański</h1>
+  <nav class="tabs">
+    <button data-view="study" class="active">Nauka</button>
+    <button data-view="list">Słowa</button>
+    <button data-view="settings">Ustawienia</button>
+  </nav>
+</header>
+<main>
+  <!-- NAUKA -->
+  <section id="view-study">
+    <div class="seg" id="dirSeg">
+      <button data-dir="es2en" class="active">ES → EN</button>
+      <button data-dir="en2es">EN → ES</button>
+    </div>
+    <div id="studyBody">
+      <div class="card">
+        <div class="prompt-lang" id="promptLang"></div>
+        <div class="prompt" id="prompt"></div>
+        <div class="cat" id="promptCat"></div>
+      </div>
+      <div id="answerArea">
+        <input id="answer" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Twoja odpowiedź">
+        <button id="checkBtn" class="primary">Sprawdź</button>
+      </div>
+      <div id="feedback" class="feedback hidden"></div>
+      <button id="nextBtn" class="primary hidden">Dalej →</button>
+    </div>
+    <div id="emptyStudy" class="empty hidden">Brak słów w bazie.<br>Dodaj je w zakładce „Słowa”.</div>
+  </section>
+
+  <!-- SŁOWA -->
+  <section id="view-list" class="hidden">
+    <div class="list-tools">
+      <input id="search" type="text" placeholder="Szukaj słowa…" autocapitalize="off" autocorrect="off">
+      <button class="add-btn" id="addBtn" title="Dodaj słowo">+</button>
+    </div>
+    <ul class="words" id="wordList"></ul>
+    <div id="emptyList" class="empty hidden">Brak słów — dodaj pierwsze przyciskiem +.</div>
+  </section>
+
+  <!-- USTAWIENIA -->
+  <section id="view-settings" class="hidden">
+    <div class="set-title">Baza słów (Excel)</div>
+    <div class="set-card">
+      <div class="set-row"><span class="k">Liczba słów</span><span class="v" id="statTotal">0</span></div>
+      <div class="set-row"><span class="k">Opanowane (3+ z rzędu)</span><span class="v" id="statLearned">0</span></div>
+    </div>
+    <div class="set-actions">
+      <button class="ghost" id="importBtn">⬇︎ Importuj z pliku (.xlsx / .csv)</button>
+      <button class="ghost" id="exportXlsxBtn">⬆︎ Eksportuj do Excela (.xlsx)</button>
+      <button class="ghost" id="exportCsvBtn">⬆︎ Eksportuj do CSV</button>
+      <button class="ghost danger" id="resetBtn">Wyzeruj postęp nauki</button>
+    </div>
+    <input id="fileInput" type="file" accept=".xlsx,.csv">
+    <p class="hint">Eksportuj plik, edytuj słowa w Excelu (kolumny: spanish, english, category, notes — kilka tłumaczeń oddziel średnikiem), a potem zaimportuj z powrotem. Dane i postęp są zapisywane w tej przeglądarce.</p>
+  </section>
+</main>
+
+<!-- MODAL dodawania/edycji -->
+<div id="modal" class="modal hidden">
+  <div class="modal-inner">
+    <h2 id="modalTitle">Nowe słowo</h2>
+    <div class="field"><label>Hiszpański</label><input id="f-es" type="text" autocapitalize="off" autocorrect="off"></div>
+    <div class="field"><label>Angielski (warianty oddziel ;)</label><input id="f-en" type="text" autocapitalize="off" autocorrect="off"></div>
+    <div class="field"><label>Kategoria (opcjonalnie)</label><input id="f-cat" type="text"></div>
+    <div class="field"><label>Notatka (opcjonalnie)</label><input id="f-note" type="text"></div>
+    <div class="modal-btns">
+      <button class="ghost" id="modalCancel">Anuluj</button>
+      <button class="primary" id="modalSave" style="margin-top:0;">Zapisz</button>
+    </div>
+    <div class="modal-btns" id="modalDeleteWrap" style="margin-top:10px;">
+      <button class="ghost danger" id="modalDelete">Usuń słowo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STARTER = [{"s": "hola","e": "hello; hi","c": "Powitania","n": ""},{"s": "adiós","e": "goodbye; bye","c": "Powitania","n": ""},{"s": "gracias","e": "thank you; thanks","c": "Powitania","n": ""},{"s": "por favor","e": "please","c": "Powitania","n": ""},{"s": "de nada","e": "you're welcome","c": "Powitania","n": ""},{"s": "perdón","e": "sorry; excuse me","c": "Powitania","n": ""},{"s": "buenos días","e": "good morning","c": "Powitania","n": ""},{"s": "buenas noches","e": "good night","c": "Powitania","n": ""},{"s": "sí","e": "yes","c": "Podstawy","n": ""},{"s": "no","e": "no","c": "Podstawy","n": ""},{"s": "yo","e": "I","c": "Zaimki","n": ""},{"s": "tú","e": "you","c": "Zaimki","n": "liczba pojedyncza"},{"s": "él","e": "he","c": "Zaimki","n": ""},{"s": "ella","e": "she","c": "Zaimki","n": ""},{"s": "nosotros","e": "we","c": "Zaimki","n": ""},{"s": "ellos","e": "they","c": "Zaimki","n": ""},{"s": "ser","e": "to be","c": "Czasowniki","n": "cecha stała"},{"s": "estar","e": "to be","c": "Czasowniki","n": "stan/miejsce"},{"s": "tener","e": "to have","c": "Czasowniki","n": ""},{"s": "hacer","e": "to do; to make","c": "Czasowniki","n": ""},{"s": "ir","e": "to go","c": "Czasowniki","n": ""},{"s": "poder","e": "can; to be able to","c": "Czasowniki","n": ""},{"s": "querer","e": "to want","c": "Czasowniki","n": ""},{"s": "saber","e": "to know","c": "Czasowniki","n": ""},{"s": "ver","e": "to see","c": "Czasowniki","n": ""},{"s": "dar","e": "to give","c": "Czasowniki","n": ""},{"s": "hablar","e": "to speak; to talk","c": "Czasowniki","n": ""},{"s": "comer","e": "to eat","c": "Czasowniki","n": ""},{"s": "beber","e": "to drink","c": "Czasowniki","n": ""},{"s": "vivir","e": "to live","c": "Czasowniki","n": ""},{"s": "venir","e": "to come","c": "Czasowniki","n": ""},{"s": "decir","e": "to say; to tell","c": "Czasowniki","n": ""},{"s": "salir","e": "to leave; to go out","c": "Czasowniki","n": ""},{"s": "llegar","e": "to arrive","c": "Czasowniki","n": ""},{"s": "pensar","e": "to think","c": "Czasowniki","n": ""},{"s": "agua","e": "water","c": "Rzeczowniki","n": ""},{"s": "comida","e": "food","c": "Rzeczowniki","n": ""},{"s": "casa","e": "house; home","c": "Rzeczowniki","n": ""},{"s": "coche","e": "car","c": "Rzeczowniki","n": ""},{"s": "perro","e": "dog","c": "Rzeczowniki","n": ""},{"s": "gato","e": "cat","c": "Rzeczowniki","n": ""},{"s": "libro","e": "book","c": "Rzeczowniki","n": ""},{"s": "mesa","e": "table","c": "Rzeczowniki","n": ""},{"s": "silla","e": "chair","c": "Rzeczowniki","n": ""},{"s": "puerta","e": "door","c": "Rzeczowniki","n": ""},{"s": "ventana","e": "window","c": "Rzeczowniki","n": ""},{"s": "ciudad","e": "city","c": "Rzeczowniki","n": ""},{"s": "país","e": "country","c": "Rzeczowniki","n": ""},{"s": "amigo","e": "friend","c": "Rzeczowniki","n": ""},{"s": "familia","e": "family","c": "Rzeczowniki","n": ""},{"s": "hombre","e": "man","c": "Rzeczowniki","n": ""},{"s": "mujer","e": "woman","c": "Rzeczowniki","n": ""},{"s": "niño","e": "child; boy","c": "Rzeczowniki","n": ""},{"s": "niña","e": "girl","c": "Rzeczowniki","n": ""},{"s": "día","e": "day","c": "Rzeczowniki","n": ""},{"s": "noche","e": "night","c": "Rzeczowniki","n": ""},{"s": "mañana","e": "morning; tomorrow","c": "Rzeczowniki","n": ""},{"s": "tiempo","e": "time; weather","c": "Rzeczowniki","n": ""},{"s": "año","e": "year","c": "Rzeczowniki","n": ""},{"s": "trabajo","e": "work; job","c": "Rzeczowniki","n": ""},{"s": "dinero","e": "money","c": "Rzeczowniki","n": ""},{"s": "escuela","e": "school","c": "Rzeczowniki","n": ""},{"s": "mundo","e": "world","c": "Rzeczowniki","n": ""},{"s": "vida","e": "life","c": "Rzeczowniki","n": ""},{"s": "mano","e": "hand","c": "Rzeczowniki","n": ""},{"s": "calle","e": "street","c": "Rzeczowniki","n": ""},{"s": "sol","e": "sun","c": "Rzeczowniki","n": ""},{"s": "luna","e": "moon","c": "Rzeczowniki","n": ""},{"s": "grande","e": "big; large","c": "Przymiotniki","n": ""},{"s": "pequeño","e": "small; little","c": "Przymiotniki","n": ""},{"s": "bueno","e": "good","c": "Przymiotniki","n": ""},{"s": "malo","e": "bad","c": "Przymiotniki","n": ""},{"s": "nuevo","e": "new","c": "Przymiotniki","n": ""},{"s": "viejo","e": "old","c": "Przymiotniki","n": ""},{"s": "bonito","e": "pretty; nice","c": "Przymiotniki","n": ""},{"s": "alto","e": "tall; high","c": "Przymiotniki","n": ""},{"s": "bajo","e": "short; low","c": "Przymiotniki","n": ""},{"s": "frío","e": "cold","c": "Przymiotniki","n": ""},{"s": "caliente","e": "hot","c": "Przymiotniki","n": ""},{"s": "fácil","e": "easy","c": "Przymiotniki","n": ""},{"s": "difícil","e": "difficult; hard","c": "Przymiotniki","n": ""},{"s": "rápido","e": "fast; quick","c": "Przymiotniki","n": ""},{"s": "feliz","e": "happy","c": "Przymiotniki","n": ""},{"s": "triste","e": "sad","c": "Przymiotniki","n": ""},{"s": "uno","e": "one","c": "Liczby","n": ""},{"s": "dos","e": "two","c": "Liczby","n": ""},{"s": "tres","e": "three","c": "Liczby","n": ""},{"s": "cuatro","e": "four","c": "Liczby","n": ""},{"s": "cinco","e": "five","c": "Liczby","n": ""},{"s": "seis","e": "six","c": "Liczby","n": ""},{"s": "siete","e": "seven","c": "Liczby","n": ""},{"s": "ocho","e": "eight","c": "Liczby","n": ""},{"s": "nueve","e": "nine","c": "Liczby","n": ""},{"s": "diez","e": "ten","c": "Liczby","n": ""},{"s": "rojo","e": "red","c": "Kolory","n": ""},{"s": "azul","e": "blue","c": "Kolory","n": ""},{"s": "verde","e": "green","c": "Kolory","n": ""},{"s": "amarillo","e": "yellow","c": "Kolory","n": ""},{"s": "negro","e": "black","c": "Kolory","n": ""},{"s": "blanco","e": "white","c": "Kolory","n": ""},{"s": "hoy","e": "today","c": "Inne","n": ""},{"s": "ayer","e": "yesterday","c": "Inne","n": ""},{"s": "siempre","e": "always","c": "Inne","n": ""},{"s": "nunca","e": "never","c": "Inne","n": ""},{"s": "aquí","e": "here","c": "Inne","n": ""},{"s": "ahora","e": "now","c": "Inne","n": ""},{"s": "también","e": "also; too","c": "Inne","n": ""},{"s": "pero","e": "but","c": "Inne","n": ""},{"s": "porque","e": "because","c": "Inne","n": ""},{"s": "muy","e": "very","c": "Inne","n": ""},{"s": "mucho","e": "a lot; much","c": "Inne","n": ""}];
+
+/* ---------------- Stan i trwałość ---------------- */
+const LS_WORDS='sf_words', LS_PROG='sf_progress', LS_DIR='sf_dir';
+let words=[], progress={}, dir='es2en';
+let current=null, revealed=false, lastShown={};
+let editingId=null;
+
+function uid(){ return 'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+
+function load(){
+  try{ const w=JSON.parse(localStorage.getItem(LS_WORDS)); if(Array.isArray(w)&&w.length){words=w;} else {seed();} }
+  catch(e){ seed(); }
+  try{ progress=JSON.parse(localStorage.getItem(LS_PROG))||{}; }catch(e){ progress={}; }
+  dir=localStorage.getItem(LS_DIR)||'es2en';
+}
+function seed(){ words=STARTER.map(x=>({id:uid(),spanish:x.s,english:x.e,category:x.c,notes:x.n})); saveWords(); }
+function saveWords(){ localStorage.setItem(LS_WORDS, JSON.stringify(words)); }
+function saveProg(){ localStorage.setItem(LS_PROG, JSON.stringify(progress)); }
+
+/* ---------------- Logika nauki ---------------- */
+function normalize(s){
+  s=(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return s.replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+}
+function variants(stored){
+  let parts=[stored||''];
+  [';',',','/'].forEach(sep=>{ parts=parts.flatMap(p=>p.split(sep)); });
+  const set=new Set();
+  parts.forEach(p=>{ const n=normalize(p); if(n){ set.add(n); if(n.startsWith('to ')) set.add(n.slice(3)); } });
+  return set;
+}
+function isCorrect(user, expected){
+  const u=normalize(user); if(!u) return false;
+  const vs=variants(expected);
+  if(vs.has(u)) return true;
+  if(u.startsWith('to ') && vs.has(u.slice(3))) return true;
+  return false;
+}
+
+const INTERVALS=[0, 4*3600e3, 24*3600e3, 3*24*3600e3, 7*24*3600e3, 21*24*3600e3];
+const MAXBOX=5;
+function pkey(w,d){ return w.spanish.toLowerCase().trim()+'|'+(d||dir); }
+function getProg(w){ return progress[pkey(w)] || {box:0,streak:0,dueAt:0,seen:0,correct:0,lastSeen:0}; }
+function record(w, correct){
+  const k=pkey(w);
+  const p=progress[k]||{box:0,streak:0,dueAt:0,seen:0,correct:0,lastSeen:0};
+  p.seen++; p.lastSeen=Date.now();
+  if(correct){ p.correct++; p.streak++; p.box=Math.min(p.box+1,MAXBOX); }
+  else { p.streak=0; p.box=Math.max(p.box-1,0); }
+  p.dueAt=Date.now()+INTERVALS[Math.min(p.box,INTERVALS.length-1)];
+  progress[k]=p; saveProg();
+}
+function nextWord(){
+  if(!words.length) return null;
+  const now=Date.now();
+  const scored=words.map(w=>({w,p:getProg(w)}));
+  let pool=scored.filter(x=>x.p.dueAt<=now);
+  if(!pool.length) pool=scored;
+  pool.sort((a,b)=> a.p.box!==b.p.box ? a.p.box-b.p.box : a.p.dueAt-b.p.dueAt);
+  let top=pool.slice(0,Math.min(5,pool.length)).map(x=>x.w);
+  const last=lastShown[dir];
+  if(top.length>1 && last){ const f=top.filter(w=>w.id!==last); if(f.length) top=f; }
+  const chosen=top[Math.floor(Math.random()*top.length)] || pool[0].w;
+  lastShown[dir]=chosen.id;
+  return chosen;
+}
+
+/* ---------------- Excel / CSV ---------------- */
+const CRC=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let c=i;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[i]=c>>>0;}return t;})();
+function crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=CRC[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function u16(v){return [v&0xFF,(v>>8)&0xFF];}
+function u32(v){v=v>>>0;return [v&0xFF,(v>>>8)&0xFF,(v>>>16)&0xFF,(v>>>24)&0xFF];}
+function concatU8(arr){let t=0;arr.forEach(a=>t+=a.length);const o=new Uint8Array(t);let p=0;arr.forEach(a=>{o.set(a,p);p+=a.length;});return o;}
+
+function zipWrite(files){
+  const enc=new TextEncoder();
+  const parts=[]; const central=[]; let offset=0;
+  for(const f of files){
+    const name=enc.encode(f.name); const data=f.data; const crc=crc32(data); const size=data.length;
+    const local=new Uint8Array([].concat(u32(0x04034b50),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(size),u32(size),u16(name.length),u16(0)));
+    parts.push(local,name,data);
+    const cen=new Uint8Array([].concat(u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(size),u32(size),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset)));
+    central.push(cen,name);
+    offset+=local.length+name.length+data.length;
+  }
+  const cdStart=offset; let cdLen=0; central.forEach(a=>cdLen+=a.length);
+  const eocd=new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(cdLen),u32(cdStart),u16(0)));
+  return concatU8([...parts,...central,eocd]);
+}
+function xmlEsc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
+function colLetter(i){let n=i+1,s='';while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s;}
+function buildXlsx(rows){
+  let sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  rows.forEach((row,ri)=>{const r=ri+1;sheet+='<row r="'+r+'">';row.forEach((val,ci)=>{sheet+='<c r="'+colLetter(ci)+r+'" t="inlineStr"><is><t xml:space="preserve">'+xmlEsc(val)+'</t></is></c>';});sheet+='</row>';});
+  sheet+='</sheetData></worksheet>';
+  const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>';
+  const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Vocabulary" sheetId="1" r:id="rId1"/></sheets></workbook>';
+  const wbr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>';
+  const enc=new TextEncoder();
+  return zipWrite([
+    {name:'[Content_Types].xml',data:enc.encode(ct)},
+    {name:'_rels/.rels',data:enc.encode(rels)},
+    {name:'xl/workbook.xml',data:enc.encode(wb)},
+    {name:'xl/_rels/workbook.xml.rels',data:enc.encode(wbr)},
+    {name:'xl/worksheets/sheet1.xml',data:enc.encode(sheet)}
+  ]);
+}
+async function inflateRaw(u8){
+  const ds=new DecompressionStream('deflate-raw');
+  const ab=await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(ab);
+}
+async function unzip(u8){
+  const dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength); const n=u8.length;
+  let eocd=-1;
+  for(let i=n-22;i>=Math.max(0,n-22-65536);i--){ if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;} }
+  if(eocd<0) throw new Error('To nie jest poprawny plik .xlsx');
+  const cnt=dv.getUint16(eocd+10,true); let p=dv.getUint32(eocd+16,true); const out={};
+  for(let k=0;k<cnt;k++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const method=dv.getUint16(p+10,true);
+    const comp=dv.getUint32(p+20,true);
+    const nameLen=dv.getUint16(p+28,true), extraLen=dv.getUint16(p+30,true), cmtLen=dv.getUint16(p+32,true);
+    const lo=dv.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u8.subarray(p+46,p+46+nameLen));
+    const lNameLen=dv.getUint16(lo+26,true), lExtra=dv.getUint16(lo+28,true);
+    const dstart=lo+30+lNameLen+lExtra;
+    const chunk=u8.subarray(dstart,dstart+comp);
+    out[name]= method===0 ? chunk.slice() : (method===8 ? await inflateRaw(chunk) : new Uint8Array());
+    p=p+46+nameLen+extraLen+cmtLen;
+  }
+  return out;
+}
+function colIndex(ref){let col=0,has=false;for(const ch of ref){if(/[A-Za-z]/.test(ch)){has=true;col=col*26+(ch.toUpperCase().charCodeAt(0)-64);}else break;}return has?col-1:0;}
+async function readXlsx(buf){
+  const files=await unzip(new Uint8Array(buf)); const dec=new TextDecoder(); const parser=new DOMParser();
+  let shared=[];
+  if(files['xl/sharedStrings.xml']){
+    const doc=parser.parseFromString(dec.decode(files['xl/sharedStrings.xml']),'application/xml');
+    const sis=doc.getElementsByTagName('si');
+    for(let i=0;i<sis.length;i++){ let txt=''; const ts=sis[i].getElementsByTagName('t'); for(let j=0;j<ts.length;j++) txt+=ts[j].textContent; shared.push(txt); }
+  }
+  const key=Object.keys(files).filter(k=>k.startsWith('xl/worksheets/')&&k.endsWith('.xml')).sort()[0];
+  if(!key) throw new Error('Brak arkusza w pliku');
+  const doc=parser.parseFromString(dec.decode(files[key]),'application/xml');
+  const rowsEl=doc.getElementsByTagName('row'); const rows=[];
+  for(let ri=0;ri<rowsEl.length;ri++){
+    const cs=rowsEl[ri].getElementsByTagName('c'); const cells={}; let maxc=-1;
+    for(let ci=0;ci<cs.length;ci++){
+      const c=cs[ci]; const ref=c.getAttribute('r')||''; const t=c.getAttribute('t')||''; let val='';
+      if(t==='s'){ const v=c.getElementsByTagName('v')[0]; if(v){ const idx=parseInt(v.textContent,10); if(idx>=0&&idx<shared.length) val=shared[idx]; } }
+      else if(t==='inlineStr'){ const ts=c.getElementsByTagName('t'); for(let j=0;j<ts.length;j++) val+=ts[j].textContent; }
+      else { const v=c.getElementsByTagName('v')[0]; if(v) val=v.textContent; }
+      const col=colIndex(ref); cells[col]=val; if(col>maxc) maxc=col;
+    }
+    const arr=[]; for(let i=0;i<=maxc;i++) arr.push(cells[i]!==undefined?cells[i]:''); rows.push(arr);
+  }
+  return rows;
+}
+
+function csvParse(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  const rows=[]; let field='', rec=[], q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){field+='"';i++;} else q=false; } else field+=ch; }
+    else{
+      if(ch==='"') q=true;
+      else if(ch===',') { rec.push(field); field=''; }
+      else if(ch==='\n'){ rec.push(field); field=''; rows.push(rec); rec=[]; }
+      else if(ch==='\r'){}
+      else field+=ch;
+    }
+  }
+  if(field!=='' || rec.length){ rec.push(field); rows.push(rec); }
+  return rows;
+}
+function csvBuild(rows){
+  const esc=f=>(/[",\n\r]/.test(f)?'"'+f.replace(/"/g,'""')+'"':f);
+  return '﻿'+rows.map(r=>r.map(esc).join(',')).join('\r\n')+'\r\n';
+}
+
+function rowsToWords(rows){
+  if(!rows.length) return [];
+  let iS=0,iE=1,iC=2,iN=3,start=0;
+  const nm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const h=rows[0].map(nm); const sp=['spanish','espanol','hiszpanski'];
+  if(h.some(x=>sp.includes(x))){
+    start=1;
+    h.forEach((x,i)=>{ if(sp.includes(x))iS=i; else if(['english','angielski','ingles'].includes(x))iE=i; else if(['category','kategoria','categoria'].includes(x))iC=i; else if(['notes','notatki','uwagi'].includes(x))iN=i; });
+  }
+  const cell=(row,i)=> (i>=0&&i<row.length)?row[i]:'';
+  const res=[];
+  for(let r=start;r<rows.length;r++){
+    const row=rows[r]; const s=(cell(row,iS)||'').trim(); const e=(cell(row,iE)||'').trim();
+    if(!s && !e) continue;
+    res.push({id:uid(),spanish:s,english:e,category:(cell(row,iC)||'').trim(),notes:(cell(row,iN)||'').trim()});
+  }
+  return res;
+}
+function wordsToRows(){ return [['spanish','english','category','notes'], ...words.map(w=>[w.spanish,w.english,w.category,w.notes])]; }
+function download(name, data, mime){
+  const blob=new Blob([data],{type:mime});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+/* ---------------- UI ---------------- */
+const $=id=>document.getElementById(id);
+
+function showView(name){
+  ['study','list','settings'].forEach(v=>{ $('view-'+v).classList.toggle('hidden', v!==name); });
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+  if(name==='study'){ if(!current) loadNext(); }
+  if(name==='list') renderList();
+  if(name==='settings') renderSettings();
+}
+
+/* --- Nauka --- */
+function promptText(w){ return dir==='es2en' ? w.spanish : w.english; }
+function expectedText(w){ return dir==='es2en' ? w.english : w.spanish; }
+
+function loadNext(){
+  revealed=false;
+  current=nextWord();
+  $('feedback').classList.add('hidden');
+  $('nextBtn').classList.add('hidden');
+  $('answerArea').classList.remove('hidden');
+  $('answer').value='';
+  if(!current){ $('studyBody').classList.add('hidden'); $('emptyStudy').classList.remove('hidden'); return; }
+  $('studyBody').classList.remove('hidden'); $('emptyStudy').classList.add('hidden');
+  $('promptLang').textContent = dir==='es2en' ? 'hiszpański' : 'angielski';
+  $('prompt').textContent = promptText(current);
+  $('promptCat').textContent = current.category||'';
+  setTimeout(()=>$('answer').focus(),30);
+}
+function check(){
+  if(!current || revealed) return;
+  const val=$('answer').value.trim();
+  if(!val) return;
+  const ok=isCorrect(val, expectedText(current));
+  record(current, ok);
+  revealed=true;
+  $('answerArea').classList.add('hidden');
+  const box=getProg(current).box;
+  let dots=''; for(let i=0;i<MAXBOX;i++) dots+='<span class="dot'+(i<box?' on':'')+'"></span>';
+  const fb=$('feedback');
+  fb.className='feedback '+(ok?'good':'bad');
+  fb.innerHTML =
+    '<div class="fb-icon">'+(ok?'✓':'✗')+'</div>'+
+    '<div class="fb-answer">'+escapeHtml(expectedText(current))+'</div>'+
+    (!ok ? '<div class="fb-yours">Twoja odpowiedź: '+escapeHtml(val)+'</div>' : '')+
+    (current.notes ? '<div class="fb-note">'+escapeHtml(current.notes)+'</div>' : '')+
+    '<div class="dots">'+dots+'</div>';
+  fb.classList.remove('hidden');
+  $('nextBtn').classList.remove('hidden');
+  $('nextBtn').focus();
+}
+function escapeHtml(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* --- Słowa --- */
+function renderList(){
+  const q=normalize($('search').value);
+  const list=$('wordList'); list.innerHTML='';
+  const items = q ? words.filter(w=> normalize(w.spanish).includes(q)||normalize(w.english).includes(q)||normalize(w.category).includes(q)) : words;
+  $('emptyList').classList.toggle('hidden', words.length>0);
+  items.forEach(w=>{
+    const li=document.createElement('li');
+    const boxA=(progress[pkey(w,'es2en')]||{}).box||0;
+    const boxB=(progress[pkey(w,'en2es')]||{}).box||0;
+    const box=Math.min(boxA,boxB);
+    let dots=''; for(let i=0;i<MAXBOX;i++) dots+='<span class="dot'+(i<box?' on':'')+'"></span>';
+    li.innerHTML='<div class="w-main"><div class="w-es">'+escapeHtml(w.spanish)+'</div><div class="w-en">'+escapeHtml(w.english)+'</div></div>'+
+      (w.category?'<span class="w-chip">'+escapeHtml(w.category)+'</span>':'')+
+      '<span class="w-mini-dots">'+dots+'</span>';
+    li.onclick=()=>openModal(w);
+    list.appendChild(li);
+  });
+}
+
+/* --- Modal --- */
+function openModal(w){
+  editingId = w ? w.id : null;
+  $('modalTitle').textContent = w ? 'Edytuj słowo' : 'Nowe słowo';
+  $('f-es').value = w?w.spanish:''; $('f-en').value=w?w.english:'';
+  $('f-cat').value = w?w.category:''; $('f-note').value=w?w.notes:'';
+  $('modalDeleteWrap').style.display = w ? 'flex' : 'none';
+  $('modal').classList.remove('hidden');
+  setTimeout(()=>$('f-es').focus(),30);
+}
+function closeModal(){ $('modal').classList.add('hidden'); editingId=null; }
+function saveModal(){
+  const s=$('f-es').value.trim(), e=$('f-en').value.trim();
+  if(!s||!e){ alert('Podaj słowo po hiszpańsku i angielsku.'); return; }
+  const c=$('f-cat').value.trim(), n=$('f-note').value.trim();
+  if(editingId){
+    const w=words.find(x=>x.id===editingId);
+    if(w){ w.spanish=s; w.english=e; w.category=c; w.notes=n; }
+  } else {
+    words.push({id:uid(),spanish:s,english:e,category:c,notes:n});
+  }
+  saveWords(); closeModal(); renderList(); renderSettings();
+}
+function deleteModal(){
+  if(editingId){ words=words.filter(x=>x.id!==editingId); saveWords(); }
+  closeModal(); renderList(); renderSettings();
+  if(current && !words.find(w=>w.id===current.id)) loadNext();
+}
+
+/* --- Ustawienia --- */
+function learnedCount(){
+  return words.filter(w=>{
+    const a=progress[pkey(w,'es2en')], b=progress[pkey(w,'en2es')];
+    return a&&b&&a.box>=3&&b.box>=3;
+  }).length;
+}
+function renderSettings(){ $('statTotal').textContent=words.length; $('statLearned').textContent=learnedCount(); }
+
+async function importFile(file){
+  try{
+    if(file.name.toLowerCase().endsWith('.csv')){
+      const text=await file.text();
+      const w=rowsToWords(csvParse(text));
+      if(!w.length){ alert('W pliku nie znaleziono słów.'); return; }
+      words=w;
+    } else {
+      const buf=await file.arrayBuffer();
+      const rows=await readXlsx(buf);
+      const w=rowsToWords(rows);
+      if(!w.length){ alert('W pliku nie znaleziono słów.'); return; }
+      words=w;
+    }
+    saveWords(); current=null; loadNext(); renderList(); renderSettings();
+    alert('Zaimportowano '+words.length+' słów.');
+  }catch(err){ alert('Import nie powiódł się: '+err.message); }
+}
+
+/* ---------------- Inicjalizacja ---------------- */
+function initEvents(){
+  document.querySelectorAll('.tabs button').forEach(b=> b.onclick=()=>showView(b.dataset.view));
+  document.querySelectorAll('#dirSeg button').forEach(b=> b.onclick=()=>{
+    dir=b.dataset.dir; localStorage.setItem(LS_DIR,dir);
+    document.querySelectorAll('#dirSeg button').forEach(x=>x.classList.toggle('active',x.dataset.dir===dir));
+    loadNext();
+  });
+  $('checkBtn').onclick=check;
+  $('nextBtn').onclick=loadNext;
+  $('answer').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); revealed?loadNext():check(); }});
+  $('search').addEventListener('input',renderList);
+  $('addBtn').onclick=()=>openModal(null);
+  $('modalCancel').onclick=closeModal;
+  $('modalSave').onclick=saveModal;
+  $('modalDelete').onclick=deleteModal;
+  $('modal').addEventListener('click',e=>{ if(e.target===$('modal')) closeModal(); });
+  $('importBtn').onclick=()=>$('fileInput').click();
+  $('fileInput').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importFile(f); e.target.value=''; });
+  $('exportXlsxBtn').onclick=()=>download('vocabulary.xlsx', buildXlsx(wordsToRows()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  $('exportCsvBtn').onclick=()=>download('vocabulary.csv', csvBuild(wordsToRows()), 'text/csv');
+  $('resetBtn').onclick=()=>{ if(confirm('Wyzerować cały postęp nauki? Słowa zostaną.')){ progress={}; saveProg(); renderSettings(); renderList(); } };
+}
+
+load();
+document.querySelectorAll('#dirSeg button').forEach(x=>x.classList.toggle('active',x.dataset.dir===dir));
+initEvents();
+showView('study');
+</script>
+</body>
+</html>
