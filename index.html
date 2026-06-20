@@ -186,6 +186,18 @@
     </div>
     <input id="fileInput" type="file" accept=".xlsx,.csv">
     <p class="hint">Eksportuj plik, edytuj słowa w Excelu (kolumny: spanish, english, category, notes — kilka tłumaczeń oddziel średnikiem), a potem zaimportuj z powrotem. Dane i postęp są zapisywane w tej przeglądarce.</p>
+
+    <div class="set-title" style="margin-top:22px;">Synchronizacja Mac ↔ iPhone (GitHub)</div>
+    <div class="set-card" style="padding:14px 16px;">
+      <div class="field"><label>Repozytorium</label><input id="ghRepo" type="text" placeholder="uzytkownik/repo" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+      <div class="field" style="margin-bottom:0;"><label>Token GitHub (zapisywany tylko w tej przeglądarce)</label><input id="ghToken" type="password" placeholder="github_pat_…" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+    </div>
+    <div class="set-actions">
+      <button class="ghost" id="ghSaveBtn">Zapisz token i repozytorium</button>
+      <button class="ghost" id="ghPushBtn">⬆︎ Wyślij dane na GitHub</button>
+      <button class="ghost" id="ghPullBtn">⬇︎ Pobierz dane z GitHub</button>
+    </div>
+    <p class="hint" id="ghStatus">Wklej token, aby synchronizować słowa i postęp między urządzeniami. Na pierwszym urządzeniu kliknij „Wyślij”, na pozostałych „Pobierz”.</p>
   </section>
 </main>
 
@@ -259,7 +271,7 @@ function record(w, correct){
   if(correct){ p.correct++; p.streak++; p.box=Math.min(p.box+1,MAXBOX); }
   else { p.streak=0; p.box=Math.max(p.box-1,0); }
   p.dueAt=Date.now()+INTERVALS[Math.min(p.box,INTERVALS.length-1)];
-  progress[k]=p; saveProg();
+  progress[k]=p; saveProg(); markChanged();
 }
 function nextWord(){
   if(!words.length) return null;
@@ -419,6 +431,69 @@ function download(name, data, mime){
   setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
+/* ---------------- Synchronizacja GitHub ---------------- */
+let ghToken=localStorage.getItem('sf_gh_token')||'';
+let ghRepo=localStorage.getItem('sf_gh_repo')||'BizZzyx/fiszki';
+let remoteSha=null, pushTimer=null;
+
+function setGhStatus(msg){ const el=document.getElementById('ghStatus'); if(el) el.textContent=msg; }
+function markChanged(){ localStorage.setItem('sf_updated', String(Date.now())); schedulePush(); }
+function schedulePush(){
+  if(!ghToken) return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>{ pushTimer=null; syncPush().then(()=>setGhStatus('Zapisano na GitHub.')).catch(e=>setGhStatus('Błąd zapisu na GitHub: '+e.message)); }, 5000);
+}
+function b64encodeUtf8(str){ const bytes=new TextEncoder().encode(str); let bin=''; for(const b of bytes) bin+=String.fromCharCode(b); return btoa(bin); }
+function b64decodeUtf8(b64){ const bin=atob((b64||'').replace(/\s/g,'')); const bytes=Uint8Array.from(bin, c=>c.charCodeAt(0)); return new TextDecoder().decode(bytes); }
+
+async function ghGet(path){
+  const r=await fetch('https://api.github.com/repos/'+ghRepo+'/contents/'+path+'?ref=main&t='+Date.now(),
+    {headers:{Authorization:'Bearer '+ghToken, Accept:'application/vnd.github+json'}});
+  if(r.status===404) return null;
+  if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('GitHub '+r.status+(t?' – '+t:'')); }
+  return await r.json();
+}
+async function ghPut(path, contentStr, sha, message){
+  const body={message:message, content:b64encodeUtf8(contentStr), branch:'main'};
+  if(sha) body.sha=sha;
+  const r=await fetch('https://api.github.com/repos/'+ghRepo+'/contents/'+path,
+    {method:'PUT', keepalive:true, headers:{Authorization:'Bearer '+ghToken, Accept:'application/vnd.github+json','Content-Type':'application/json'}, body:JSON.stringify(body)});
+  if(!r.ok){ let t=''; try{t=(await r.json()).message||'';}catch(e){} throw new Error('GitHub '+r.status+(t?' – '+t:'')); }
+  return await r.json();
+}
+async function syncPull(opts){
+  const f=await ghGet('data.json');
+  if(!f){ remoteSha=null; return {status:'empty'}; }
+  remoteSha=f.sha;
+  const data=JSON.parse(b64decodeUtf8(f.content));
+  const localUpdated=+(localStorage.getItem('sf_updated')||0);
+  if((opts&&opts.force) || (data.updatedAt||0) > localUpdated){
+    if(Array.isArray(data.words)) words=data.words;
+    progress=data.progress||{};
+    saveWords(); saveProg();
+    localStorage.setItem('sf_updated', String(data.updatedAt||Date.now()));
+    return {status:'applied'};
+  }
+  return {status:'local-newer'};
+}
+async function syncPush(){
+  if(remoteSha===null){ const f=await ghGet('data.json'); remoteSha=f?f.sha:null; }
+  const updatedAt=+(localStorage.getItem('sf_updated')||Date.now());
+  const payload=JSON.stringify({version:1, updatedAt:updatedAt, words:words, progress:progress});
+  const res=await ghPut('data.json', payload, remoteSha, 'Aktualizacja danych fiszek');
+  remoteSha=(res.content&&res.content.sha)||null;
+  return {status:'pushed'};
+}
+function ensureToken(){
+  if(!ghToken){
+    const t=((document.getElementById('ghToken')||{}).value||'').trim();
+    const rp=((document.getElementById('ghRepo')||{}).value||'').trim();
+    if(t){ ghToken=t; if(rp) ghRepo=rp; localStorage.setItem('sf_gh_token',ghToken); localStorage.setItem('sf_gh_repo',ghRepo); }
+  }
+  if(!ghToken){ setGhStatus('Najpierw wklej token GitHub i kliknij „Zapisz”.'); return false; }
+  return true;
+}
+
 /* ---------------- UI ---------------- */
 const $=id=>document.getElementById(id);
 
@@ -513,10 +588,10 @@ function saveModal(){
   } else {
     words.push({id:uid(),spanish:s,english:e,category:c,notes:n});
   }
-  saveWords(); closeModal(); renderList(); renderSettings();
+  saveWords(); markChanged(); closeModal(); renderList(); renderSettings();
 }
 function deleteModal(){
-  if(editingId){ words=words.filter(x=>x.id!==editingId); saveWords(); }
+  if(editingId){ words=words.filter(x=>x.id!==editingId); saveWords(); markChanged(); }
   closeModal(); renderList(); renderSettings();
   if(current && !words.find(w=>w.id===current.id)) loadNext();
 }
@@ -528,7 +603,11 @@ function learnedCount(){
     return a&&b&&a.box>=3&&b.box>=3;
   }).length;
 }
-function renderSettings(){ $('statTotal').textContent=words.length; $('statLearned').textContent=learnedCount(); }
+function renderSettings(){
+  $('statTotal').textContent=words.length; $('statLearned').textContent=learnedCount();
+  if($('ghRepo') && document.activeElement!==$('ghRepo')) $('ghRepo').value=ghRepo;
+  if($('ghToken') && document.activeElement!==$('ghToken') && !$('ghToken').value) $('ghToken').value=ghToken;
+}
 
 async function importFile(file){
   try{
@@ -544,7 +623,7 @@ async function importFile(file){
       if(!w.length){ alert('W pliku nie znaleziono słów.'); return; }
       words=w;
     }
-    saveWords(); current=null; loadNext(); renderList(); renderSettings();
+    saveWords(); markChanged(); current=null; loadNext(); renderList(); renderSettings();
     alert('Zaimportowano '+words.length+' słów.');
   }catch(err){ alert('Import nie powiódł się: '+err.message); }
 }
@@ -570,13 +649,51 @@ function initEvents(){
   $('fileInput').addEventListener('change',e=>{ const f=e.target.files[0]; if(f) importFile(f); e.target.value=''; });
   $('exportXlsxBtn').onclick=()=>download('vocabulary.xlsx', buildXlsx(wordsToRows()), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   $('exportCsvBtn').onclick=()=>download('vocabulary.csv', csvBuild(wordsToRows()), 'text/csv');
-  $('resetBtn').onclick=()=>{ if(confirm('Wyzerować cały postęp nauki? Słowa zostaną.')){ progress={}; saveProg(); renderSettings(); renderList(); } };
+  $('resetBtn').onclick=()=>{ if(confirm('Wyzerować cały postęp nauki? Słowa zostaną.')){ progress={}; saveProg(); markChanged(); renderSettings(); renderList(); } };
+
+  $('ghSaveBtn').onclick=()=>{
+    ghRepo=($('ghRepo').value||'').trim()||'BizZzyx/fiszki';
+    ghToken=($('ghToken').value||'').trim();
+    localStorage.setItem('sf_gh_repo',ghRepo); localStorage.setItem('sf_gh_token',ghToken);
+    remoteSha=null;
+    setGhStatus(ghToken?'Zapisano. Na pierwszym urządzeniu kliknij „Wyślij”, na pozostałych „Pobierz”.':'Token wyczyszczony – synchronizacja wyłączona.');
+  };
+  $('ghPushBtn').onclick=async()=>{
+    if(!ensureToken()) return; setGhStatus('Wysyłam na GitHub…');
+    try{ localStorage.setItem('sf_updated', String(Date.now())); await syncPush(); setGhStatus('Wysłano '+words.length+' słów i postęp na GitHub.'); }
+    catch(e){ setGhStatus('Błąd: '+e.message); }
+  };
+  $('ghPullBtn').onclick=async()=>{
+    if(!ensureToken()) return; setGhStatus('Pobieram z GitHub…');
+    try{
+      const r=await syncPull({force:true});
+      if(r.status==='empty'){ setGhStatus('Na GitHubie nie ma jeszcze danych — najpierw kliknij „Wyślij” na pierwszym urządzeniu.'); }
+      else { current=null; loadNext(); renderList(); renderSettings(); setGhStatus('Pobrano '+words.length+' słów z GitHub.'); }
+    }catch(e){ setGhStatus('Błąd: '+e.message); }
+  };
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden' && ghToken && pushTimer){ clearTimeout(pushTimer); pushTimer=null; syncPush().catch(()=>{}); }
+  });
 }
 
-load();
-document.querySelectorAll('#dirSeg button').forEach(x=>x.classList.toggle('active',x.dataset.dir===dir));
-initEvents();
-showView('study');
+function boot(){
+  load();
+  document.querySelectorAll('#dirSeg button').forEach(x=>x.classList.toggle('active',x.dataset.dir===dir));
+  initEvents();
+  if($('ghRepo')) $('ghRepo').value=ghRepo;
+  if($('ghToken')) $('ghToken').value=ghToken;
+  showView('study');
+  if(ghToken){
+    setGhStatus('Synchronizuję z GitHub…');
+    syncPull().then(r=>{
+      if(r.status==='applied'){ current=null; loadNext(); renderList(); renderSettings(); setGhStatus('Zsynchronizowano z GitHub.'); }
+      else if(r.status==='empty'){ setGhStatus('Połączono. Kliknij „Wyślij”, aby zapisać dane na GitHub.'); }
+      else { setGhStatus('Dane lokalne są aktualne (najnowsze).'); }
+    }).catch(e=>setGhStatus('Synchronizacja wyłączona (błąd: '+e.message+').'));
+  }
+}
+boot();
 </script>
 </body>
 </html>
